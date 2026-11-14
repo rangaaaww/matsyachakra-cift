@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MatsyaChakra | Decentralized Marine Bio-Refinery & AI Dispatch Grid</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Leaflet GIS Engine Connected to Google Maps Tiles -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+    body { font-family: 'Inter', sans-serif; background-color: #060d17; color: #e2e8f0; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .glass { background: rgba(15, 25, 42, 0.78); backdrop-filter: blur(12px); border: 1px solid rgba(56, 189, 248, 0.18); }
+    .scan-line {
+      position: absolute; width: 100%; height: 3px;
+      background: linear-gradient(90deg, transparent, #2dd4bf, #38bdf8, transparent);
+      box-shadow: 0 0 12px #2dd4bf;
+      animation: scan 2.4s infinite linear;
+    }
+    @keyframes scan {
+      0% { top: 5%; opacity: 0.9; }
+      50% { top: 92%; opacity: 1; }
+      100% { top: 5%; opacity: 0.9; }
+    }
+    #map { height: 380px; width: 100%; border-radius: 0.75rem; z-index: 10; background: #0b1322; }
+    /* Dark Command Filter when using Google Roadmap in Dark Mode */
+    .google-dark-tiles {
+      filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(92%);
+    }
+    .leaflet-control-layers {
+      background: rgba(15, 23, 42, 0.92) !important;
+      color: #e2e8f0 !important;
+      border: 1px solid rgba(56, 189, 248, 0.3) !important;
+      border-radius: 0.5rem !important;
+      font-size: 11px !important;
+    }
+    .leaflet-control-attribution {
+      background: rgba(15, 23, 42, 0.85) !important;
+      color: #94a3b8 !important;
+      font-size: 10px !important;
+    }
+  </style>
+</head>
+<body class="min-h-screen pb-12">
+
+  <!-- Top Navigation Header -->
+  <header class="border-b border-sky-900/60 bg-slate-950/90 sticky top-0 z-50 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-400 to-sky-600 flex items-center justify-center shadow-lg shadow-teal-500/20">
+          <i data-lucide="cpu" class="text-slate-950 w-6 h-6"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-xl font-extrabold tracking-tight text-white">MATSYA<span class="text-teal-400">CHAKRA</span></h1>
+            <span class="text-[11px] mono uppercase px-2 py-0.5 rounded-full bg-teal-500/15 text-teal-300 border border-teal-500/30">CIFTEQ Ideathon 2026 Prototype</span>
+          </div>
+          <p class="text-xs text-slate-400">Decentralized Harbor Bio-Stabilization Pods & AI Marine Waste-to-Wealth Grid</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="text-slate-300">Google Maps Engine: <strong class="text-emerald-400 mono">CONNECTED</strong></span>
+        </div>
+        <button onclick="switchCluster('chennai')" id="btn-chennai" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-teal-500 text-slate-950 transition">
+          Chennai Cluster
+        </button>
+        <button onclick="switchCluster('kochi')" id="btn-kochi" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
+          Kochi (CIFT) Cluster
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Grid -->
+  <main class="max-w-7xl mx-auto px-4 mt-6 space-y-6">
+
+    <!-- Top KPI Row -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="glass rounded-xl p-4">
+        <div class="flex justify-between items-start">
+          <span class="text-xs text-slate-400 uppercase font-semibold">Biomass Stabilized Today</span>
+          <i data-lucide="recycle" class="w-4 h-4 text-teal-400"></i>
+        </div>
+        <div class="text-2xl font-bold text-white mt-1 mono" id="kpi-biomass">14,820 kg</div>
+        <div class="text-xs text-emerald-400 mt-1">100% Putrefaction Arrested (&lt;45m)</div>
+      </div>
+
+      <div class="glass rounded-xl p-4">
+        <div class="flex justify-between items-start">
+          <span class="text-xs text-slate-400 uppercase font-semibold">Chitin & Collagen Precursor</span>
+          <i data-lucide="flask-conical" class="w-4 h-4 text-sky-400"></i>
+        </div>
+        <div class="text-2xl font-bold text-white mt-1 mono" id="kpi-yield">3,490 kg</div>
+        <div class="text-xs text-sky-300 mt-1">Export Pharma Grade Certified</div>
+      </div>
+
+      <div class="glass rounded-xl p-4">
+        <div class="flex justify-between items-start">
+          <span class="text-xs text-slate-400 uppercase font-semibold">SHG & Fisherfolk UPI Payouts</span>
+          <i data-lucide="wallet" class="w-4 h-4 text-amber-400"></i>
+        </div>
+        <div class="text-2xl font-bold text-white mt-1 mono" id="kpi-payout">₹ 96,330</div>
+        <div class="text-xs text-amber-300 mt-1">412 Micro-Deposits Verified</div>
+      </div>
+
+      <div class="glass rounded-xl p-4">
+        <div class="flex justify-between items-start">
+          <span class="text-xs text-slate-400 uppercase font-semibold">Origami Thermal Core Efficiency</span>
+          <i data-lucide="zap" class="w-4 h-4 text-purple-400"></i>
+        </div>
+        <div class="text-2xl font-bold text-white mt-1 mono">-41.8% kWh</div>
+        <div class="text-xs text-purple-300 mt-1">4x Surface Area Miura-Ori Core</div>
+      </div>
+    </div>
+
+    <!-- Middle Section: AI Biomolecule Assay + Google Maps Harbor Dispatch -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+      <!-- Left 5 Cols: Edge-AI Optical Biomolecule Scanner & UPI Engine -->
+      <div class="lg:col-span-5 glass rounded-2xl p-5 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div class="flex items-center gap-2">
+              <i data-lucide="scan-eye" class="w-5 h-5 text-teal-400"></i>
+              <h2 class="font-bold text-white text-base">Edge-AI Optical Biomolecule Assay</h2>
+            </div>
+            <span class="text-[11px] mono bg-sky-500/10 text-sky-400 px-2 py-0.5 rounded border border-sky-500/20">CV Model v2.4</span>
+          </div>
+
+          <!-- Simulated Camera Viewport -->
+          <div class="relative mt-4 rounded-xl overflow-hidden bg-slate-950 border border-slate-800 h-44 flex flex-col items-center justify-center p-4">
+            <div class="scan-line"></div>
+            <div class="absolute top-2 left-3 text-[11px] mono text-teal-400 bg-slate-900/80 px-2 py-0.5 rounded">
+              LIVE HOPPER CAM // HARBOR POD #04
+            </div>
+            <div class="absolute top-2 right-3 text-[11px] mono text-amber-400 bg-slate-900/80 px-2 py-0.5 rounded" id="cam-chamber">
+              ROUTE -> CHAMBER A (ALKALI-CHITIN)
+            </div>
+
+            <div class="text-center z-10">
+              <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/20 border border-teal-400/40 text-teal-200 text-xs font-semibold mb-2" id="scan-label">
+                Detected: Penaeus vannamei (Shrimp Shells & Heads)
+              </div>
+              <p class="text-xs text-slate-400 max-w-xs mx-auto" id="scan-sub">
+                Confidence: <span class="text-white mono">98.4%</span> | Moisture: <span class="text-white mono">74%</span> | Freshness Index: <span class="text-emerald-400 mono">Grade-A (&lt;2h Post-Peel)</span>
+              </p>
+            </div>
+          </div>
+
+          <!-- Controls to Simulate Different Waste Batches -->
+          <div class="mt-4 space-y-3">
+            <div>
+              <label class="text-xs text-slate-400 font-medium block mb-1">Select Raw Fishery Waste Stream (Simulate Intake)</label>
+              <select id="waste-select" onchange="updateAssay()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-teal-400">
+                <option value="shrimp">Shrimp Peeling Shed Waste (Penaeus vannamei Shells/Heads)</option>
+                <option value="tuna">Pelagic Fish Frames & Skin (Yellowfin Tuna / Seer Fish)</option>
+                <option value="sardine">Mixed Viscera & Heads (Oil Sardine / Mackerel Offal)</option>
+                <option value="scales">Market De-Scaling Waste (Teleost Scales & Fins)</option>
+              </select>
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-400">Hopper Batch Weight (kg)</span>
+                <span class="mono font-bold text-teal-400" id="weight-display">50 kg</span>
+              </div>
+              <input type="range" id="weight-slider" min="10" max="250" step="5" value="50" oninput="updateAssay()" class="w-full accent-teal-400 cursor-pointer" />
+            </div>
+          </div>
+
+          <!-- Recoverable Biomolecule Breakdown -->
+          <div class="mt-4 bg-slate-900/90 rounded-xl p-3.5 border border-slate-800 space-y-2.5">
+            <div class="text-xs font-semibold text-slate-300 flex justify-between">
+              <span>Recoverable Biochemical Output (45-Min Stabilization)</span>
+              <span class="text-teal-400 mono" id="chamber-tag">Chamber A</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 text-xs">
+              <div class="p-2 rounded-lg bg-slate-950 border border-slate-800/80">
+                <span class="text-slate-400 block text-[11px]" id="out1-name">Dry Crude Chitin Flakes</span>
+                <span class="text-base font-bold text-white mono" id="out1-val">6.8 kg</span>
+                <span class="text-[11px] text-emerald-400 block" id="out1-mkt">B2B Value: ₹ 2,720</span>
+              </div>
+              <div class="p-2 rounded-lg bg-slate-950 border border-slate-800/80">
+                <span class="text-slate-400 block text-[11px]" id="out2-name">Carotenoid / Astaxanthin Oil</span>
+                <span class="text-base font-bold text-white mono" id="out2-val">1.9 L</span>
+                <span class="text-[11px] text-sky-400 block" id="out2-mkt">B2B Value: ₹ 1,330</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Instant UPI Payout Action -->
+        <div class="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between">
+          <div>
+            <span class="text-[11px] text-slate-400 uppercase block">Dynamic SHG / Vendor Spot Payout</span>
+            <div class="text-xl font-extrabold text-amber-400 mono" id="upi-payout">₹ 375.00</div>
+            <span class="text-[11px] text-slate-400" id="rate-tag">@ ₹7.50/kg Instant UPI Credit</span>
+          </div>
+          <button onclick="triggerDeposit()" class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-teal-400 to-sky-500 text-slate-950 font-bold text-xs shadow-lg shadow-teal-500/20 hover:opacity-95 transition flex items-center gap-1.5">
+            <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+            Log Batch & Pay UPI
+          </button>
+        </div>
+      </div>
+
+      <!-- Right 7 Cols: Google Maps Coastal Pod Telemetry & Fleet Dispatch -->
+      <div class="lg:col-span-7 glass rounded-2xl p-5 flex flex-col justify-between">
+        <div>
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3 mb-4">
+            <div class="flex items-center gap-2">
+              <i data-lucide="map-pin" class="w-5 h-5 text-sky-400"></i>
+              <h2 class="font-bold text-white text-base">Google Maps Live Harbor Pod & Fleet Telemetry</h2>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <button onclick="dispatchTanker()" class="px-3 py-1.5 rounded-lg bg-sky-500/20 border border-sky-400/40 text-sky-300 text-xs font-semibold hover:bg-sky-500/30 transition flex items-center gap-1.5">
+                <i data-lucide="truck" class="w-4 h-4"></i>
+                Simulate Tanker Dispatch
+              </button>
+              <a id="gmaps-nav-link" href="https://www.google.com/maps/dir/13.1292,80.2977/13.1135,80.2942/13.0389,80.2785" target="_blank" class="px-3 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs font-semibold hover:bg-emerald-500/30 transition flex items-center gap-1.5">
+                <i data-lucide="navigation" class="w-3.5 h-3.5"></i>
+                Open Route in Google Maps
+              </a>
+            </div>
+          </div>
+
+          <!-- Google Maps Container (Satellite Hybrid + Dark Mode Switchable) -->
+          <div id="map" class="border border-slate-800"></div>
+        </div>
+
+        <!-- Pod Fill Status Cards -->
+        <div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3" id="pod-cards">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Bottom Section: Hardware Architecture & Dual-Chamber Origami Telemetry -->
+    <div class="glass rounded-2xl p-5">
+      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3 mb-4">
+        <div class="flex items-center gap-2">
+          <i data-lucide="layers" class="w-5 h-5 text-purple-400"></i>
+          <h2 class="font-bold text-white text-base">Harbor-In-A-Box Hardware Architecture (10ft Modular Pod Telemetry)</h2>
+        </div>
+        <span class="text-xs text-slate-400">Zero-Odor Closed-Loop Bio-Scrubber Active | Solar + 3-Phase Hybrid</span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="p-4 rounded-xl bg-slate-900/90 border border-slate-800">
+          <div class="flex items-center justify-between text-xs text-teal-400 font-bold uppercase mb-1">
+            <span>Chamber A: Crustacean Line</span>
+            <span class="mono">68°C ACTIVE</span>
+          </div>
+          <p class="text-xs text-slate-300 font-medium mb-2">Miura-Ori Origami Thermal Dehydration Core</p>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Tessellated anodized-aluminum fold geometry packs <strong>4.2x convective drying surface area</strong> into a compact cassette. Rapidly stabilizes shrimp/crab shells into <strong class="text-white">Dry Chitin Flakes (8% moisture)</strong> in 42 minutes.
+          </p>
+        </div>
+
+        <div class="p-4 rounded-xl bg-slate-900/90 border border-slate-800">
+          <div class="flex items-center justify-between text-xs text-sky-400 font-bold uppercase mb-1">
+            <span>Chamber B: Soft Offal Line</span>
+            <span class="mono">pH 3.8 STABLE</span>
+          </div>
+          <p class="text-xs text-slate-300 font-medium mb-2">Enzymatic & Organic Acid Silage Reactor</p>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Follows <strong>ICAR-CIFT validated liquefaction protocols</strong>. Grinds fish heads/viscera with automated 2.5% Formic Acid dosing to halt microbial putrefaction and yield shelf-stable <strong class="text-white">Liquid Fish Protein Hydrolysate</strong>.
+          </p>
+        </div>
+
+        <div class="p-4 rounded-xl bg-slate-900/90 border border-slate-800">
+          <div class="flex items-center justify-between text-xs text-amber-400 font-bold uppercase mb-1">
+            <span>B2B Bio-Exchange Orderbook</span>
+            <span class="mono">LIVE MATCHING</span>
+          </div>
+          <p class="text-xs text-slate-300 font-medium mb-2">Cryptographic Batch Purity Manifest</p>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Aggregated pod batches are auto-matched to verified buyers: <strong class="text-white">Marine Collagen Labs (₹450/kg)</strong>, <strong class="text-white">Chitosan Biopolymer Plants (₹380/kg)</strong>, and <strong class="text-white">Aquafeed Mills (₹110/L)</strong>.
+          </p>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    lucide.createIcons();
+
+    const bioProfiles = {
+      shrimp: {
+        label: "Detected: Penaeus vannamei (Shrimp Shells & Heads)",
+        sub: "Confidence: 98.4% | Moisture: 74% | Freshness: Grade-A (<2h Post-Peel)",
+        chamber: "ROUTE -> CHAMBER A (ALKALI + ORIGAMI DRYER)",
+        shortChamber: "Chamber A (Origami Thermal)",
+        out1Name: "Dry Crude Chitin Flakes",
+        out1Ratio: 0.136,
+        out1Price: 400,
+        out1Unit: "kg",
+        out2Name: "Astaxanthin Carotenoid Liquor",
+        out2Ratio: 0.038,
+        out2Price: 700,
+        out2Unit: "L",
+        vendorRate: 7.5
+      },
+      tuna: {
+        label: "Detected: Thunnus albacares (Pelagic Frames, Skin & Trim)",
+        sub: "Confidence: 96.8% | Collagen Density: High | Freshness: Grade-A",
+        chamber: "ROUTE -> CHAMBER A/B (COLLAGEN SKIN + SILAGE)",
+        shortChamber: "Dual Chamber Split",
+        out1Name: "Stabilized Marine Collagen Precursor",
+        out1Ratio: 0.11,
+        out1Price: 520,
+        out1Unit: "kg",
+        out2Name: "Fish Protein Hydrolysate (FPH)",
+        out2Ratio: 0.52,
+        out2Price: 115,
+        out2Unit: "L",
+        vendorRate: 8.5
+      },
+      sardine: {
+        label: "Detected: Sardinella longiceps (Viscera & Lipid-Rich Heads)",
+        sub: "Confidence: 97.1% | Polyunsaturated Lipid Content: 14.2%",
+        chamber: "ROUTE -> CHAMBER B (ACID HYDROLYSIS REACTOR)",
+        shortChamber: "Chamber B (Acid Silage)",
+        out1Name: "Crude Omega-3 Marine Lipid Emulsion",
+        out1Ratio: 0.095,
+        out1Price: 340,
+        out1Unit: "L",
+        out2Name: "Foliar Bio-Fertilizer Amino Slurry",
+        out2Ratio: 0.64,
+        out2Price: 95,
+        out2Unit: "L",
+        vendorRate: 5.5
+      },
+      scales: {
+        label: "Detected: Mixed Teleost Scales & Fin Cartilage",
+        sub: "Confidence: 99.0% | Hydroxyapatite & Type-I Collagen Rich",
+        chamber: "ROUTE -> CHAMBER A (ORIGAMI THERMAL DEHYDRATOR)",
+        shortChamber: "Chamber A (Origami Thermal)",
+        out1Name: "Dry Collagenous Scale Matrix",
+        out1Ratio: 0.24,
+        out1Price: 460,
+        out1Unit: "kg",
+        out2Name: "Marine Calcium Bio-Mineral Powder",
+        out2Ratio: 0.14,
+        out2Price: 180,
+        out2Unit: "kg",
+        vendorRate: 9.0
+      }
+    };
+
+    let totalBiomass = 14820;
+    let totalYield = 3490;
+    let totalPayout = 96330;
+
+    function updateAssay() {
+      const type = document.getElementById('waste-select').value;
+      const weight = parseFloat(document.getElementById('weight-slider').value);
+      const p = bioProfiles[type];
+
+      document.getElementById('weight-display').innerText = weight + " kg";
+      document.getElementById('scan-label').innerText = p.label;
+      document.getElementById('scan-sub').innerText = p.sub;
+      document.getElementById('cam-chamber').innerText = p.chamber;
+      document.getElementById('chamber-tag').innerText = p.shortChamber;
+
+      const out1Qty = (weight * p.out1Ratio).toFixed(1);
+      const out1Val = Math.round(out1Qty * p.out1Price);
+      const out2Qty = (weight * p.out2Ratio).toFixed(1);
+      const out2Val = Math.round(out2Qty * p.out2Price);
+
+      document.getElementById('out1-name').innerText = p.out1Name;
+      document.getElementById('out1-val').innerText = `${out1Qty} ${p.out1Unit}`;
+      document.getElementById('out1-mkt').innerText = `B2B Value: ₹ ${out1Val.toLocaleString('en-IN')}`;
+
+      document.getElementById('out2-name').innerText = p.out2Name;
+      document.getElementById('out2-val').innerText = `${out2Qty} ${p.out2Unit}`;
+      document.getElementById('out2-mkt').innerText = `B2B Value: ₹ ${out2Val.toLocaleString('en-IN')}`;
+
+      const payout = (weight * p.vendorRate).toFixed(2);
+      document.getElementById('upi-payout').innerText = `₹ ${payout}`;
+      document.getElementById('rate-tag').innerText = `@ ₹${p.vendorRate.toFixed(2)}/kg Instant UPI Credit`;
+    }
+
+    function triggerDeposit() {
+      const type = document.getElementById('waste-select').value;
+      const weight = parseFloat(document.getElementById('weight-slider').value);
+      const p = bioProfiles[type];
+
+      totalBiomass += weight;
+      totalYield += Math.round(weight * (p.out1Ratio + p.out2Ratio));
+      totalPayout += Math.round(weight * p.vendorRate);
+
+      document.getElementById('kpi-biomass').innerText = totalBiomass.toLocaleString('en-IN') + " kg";
+      document.getElementById('kpi-yield').innerText = totalYield.toLocaleString('en-IN') + " kg";
+      document.getElementById('kpi-payout').innerText = "₹ " + totalPayout.toLocaleString('en-IN');
+
+      alert(`Batch Verified!\n• ${weight} kg routed to ${p.shortChamber}\n• Instant UPI Payout of ₹${(weight * p.vendorRate).toFixed(2)} credited to Registered Coastal SHG Wallet.`);
+    }
+
+    // DIRECT GOOGLE MAPS TILE SERVERS (No API Key Required)
+    const googleHybrid = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+      maxZoom: 20,
+      attribution: '&copy; Google Maps Satellite Hybrid'
+    });
+
+    const googleDarkRoad = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+      maxZoom: 20,
+      className: 'google-dark-tiles',
+      attribution: '&copy; Google Maps'
+    });
+
+    const googleStandardRoad = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+      maxZoom: 20,
+      attribution: '&copy; Google Maps'
+    });
+
+    const clusters = {
+      chennai: {
+        center: [13.095, 80.290],
+        zoom: 12,
+        gmapsUrl: "https://www.google.com/maps/dir/13.1292,80.2977/13.1135,80.2942/13.0389,80.2785",
+        pods: [
+          { name: "Kasimedu Fishing Harbour Pod #01", coords: [13.1292, 80.2977], fill: 88, status: "READY FOR DISPATCH", out: "420kg Chitin / 610L Silage" },
+          { name: "Royapuram Peeling Shed Pod #02", coords: [13.1135, 80.2942], fill: 82, status: "READY FOR DISPATCH", out: "310kg Chitin / 290L Silage" },
+          { name: "Nochikuppam Coastal Market Pod #03", coords: [13.0389, 80.2785], fill: 54, status: "STABILIZING", out: "185kg Collagen / 240L Silage" }
+        ]
+      },
+      kochi: {
+        center: [9.968, 76.252],
+        zoom: 12,
+        gmapsUrl: "https://www.google.com/maps/dir/10.0024,76.2245/9.9382,76.2602/9.9568,76.2721",
+        pods: [
+          { name: "Cochin Fisheries Harbour (Thoppumpady) Pod #01", coords: [9.9382, 76.2602], fill: 91, status: "READY FOR DISPATCH", out: "510kg Chitin / 740L Silage" },
+          { name: "Vypin / Murikkumpadam Peeling Hub Pod #02", coords: [10.0024, 76.2245], fill: 84, status: "READY FOR DISPATCH", out: "390kg Chitin / 410L Silage" },
+          { name: "ICAR-CIFT Willingdon Island R&D Refinery Node", coords: [9.9568, 76.2721], fill: 35, status: "CENTRAL ASSAY HUB", out: "QA & Export Certification" }
+        ]
+      }
+    };
+
+    let currentCluster = 'chennai';
+    const map = L.map('map', {
+      center: clusters.chennai.center,
+      zoom: clusters.chennai.zoom,
+      layers: [googleHybrid] // Defaults to real Google Satellite Hybrid so jury sees actual fishing boats & harbors!
+    });
+
+    // Layer Switcher in top-right of map
+    L.control.layers({
+      "Google Satellite Hybrid (Harbor View)": googleHybrid,
+      "Google Dark Command Map": googleDarkRoad,
+      "Google Standard Streets": googleStandardRoad
+    }).addTo(map);
+
+    let markers = [];
+    let routeLine = null;
+    let truckMarker = null;
+    let animInterval = null;
+
+    function renderCluster(key) {
+      currentCluster = key;
+      const c = clusters[key];
+      map.setView(c.center, c.zoom);
+      document.getElementById('gmaps-nav-link').href = c.gmapsUrl;
+
+      markers.forEach(m => map.removeLayer(m));
+      markers = [];
+      if (routeLine) map.removeLayer(routeLine);
+      if (truckMarker) map.removeLayer(truckMarker);
+      if (animInterval) clearInterval(animInterval);
+
+      const cardContainer = document.getElementById('pod-cards');
+      cardContainer.innerHTML = '';
+
+      c.pods.forEach((pod) => {
+        const color = pod.fill >= 80 ? '#f59e0b' : '#2dd4bf';
+        const marker = L.circleMarker(pod.coords, {
+          radius: 10,
+          fillColor: color,
+          color: '#0f172a',
+          weight: 2,
+          fillOpacity: 0.95
+        }).addTo(map).bindPopup(`
+          <div style="font-family:Inter,sans-serif;color:#0f172a;">
+            <b>${pod.name}</b><br>
+            <span>Fill Level: <b>${pod.fill}%</b></span><br>
+            <span>Output: ${pod.out}</span><br>
+            <a href="https://www.google.com/maps?q=${pod.coords[0]},${pod.coords[1]}" target="_blank" style="color:#0284c7;font-weight:600;text-decoration:underline;">View Harbor on Google Maps &rarr;</a>
+          </div>
+        `);
+        markers.push(marker);
+
+        cardContainer.innerHTML += `
+          <div class="p-3 rounded-xl bg-slate-900/90 border ${pod.fill >= 80 ? 'border-amber-500/40' : 'border-slate-800'}">
+            <div class="flex justify-between items-center text-xs mb-1">
+              <span class="font-bold text-white truncate pr-2">${pod.name}</span>
+              <span class="mono font-bold ${pod.fill >= 80 ? 'text-amber-400' : 'text-teal-400'}">${pod.fill}%</span>
+            </div>
+            <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mb-2">
+              <div class="${pod.fill >= 80 ? 'bg-amber-400' : 'bg-teal-400'} h-full" style="width:${pod.fill}%"></div>
+            </div>
+            <div class="text-[11px] text-slate-400">${pod.out}</div>
+          </div>
+        `;
+      });
+    }
+
+    function switchCluster(key) {
+      document.getElementById('btn-chennai').className = key === 'chennai'
+        ? "px-3 py-1.5 rounded-lg text-xs font-semibold bg-teal-500 text-slate-950 transition"
+        : "px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition";
+      document.getElementById('btn-kochi').className = key === 'kochi'
+        ? "px-3 py-1.5 rounded-lg text-xs font-semibold bg-teal-500 text-slate-950 transition"
+        : "px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition";
+      renderCluster(key);
+    }
+
+    function dispatchTanker() {
+      const c = clusters[currentCluster];
+      if (routeLine) map.removeLayer(routeLine);
+      if (truckMarker) map.removeLayer(truckMarker);
+      if (animInterval) clearInterval(animInterval);
+
+      const latlngs = c.pods.map(p => p.coords);
+      routeLine = L.polyline(latlngs, {
+        color: '#38bdf8',
+        weight: 4,
+        dashArray: '8, 8'
+      }).addTo(map);
+      map.fitBounds(routeLine.getBounds(), { padding: [35, 35] });
+
+      let step = 0;
+      const totalSteps = 80;
+      truckMarker = L.circleMarker(latlngs[0], {
+        radius: 8,
+        fillColor: '#38bdf8',
+        color: '#ffffff',
+        weight: 2,
+        fillOpacity: 1
+      }).addTo(map).bindPopup("<b>Bio-Tanker Fleet #TN-04</b><br>Google Maps Route Active").openPopup();
+
+      animInterval = setInterval(() => {
+        step = (step + 1) % totalSteps;
+        const progress = step / totalSteps;
+        let lat, lng;
+        if (progress < 0.5) {
+          const p = progress * 2;
+          lat = latlngs[0][0] + (latlngs[1][0] - latlngs[0][0]) * p;
+          lng = latlngs[0][1] + (latlngs[1][1] - latlngs[0][1]) * p;
+        } else {
+          const p = (progress - 0.5) * 2;
+          lat = latlngs[1][0] + (latlngs[2][0] - latlngs[1][0]) * p;
+          lng = latlngs[1][1] + (latlngs[2][1] - latlngs[1][1]) * p;
+        }
+        truckMarker.setLatLng([lat, lng]);
+      }, 80);
+    }
+
+    // Initialize
+    updateAssay();
+    renderCluster('chennai');
+  </script>
+</body>
+</html>
